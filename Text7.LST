@@ -1,0 +1,513 @@
+C51 COMPILER V9.59.0.0   TEXT7                                                             11/02/2018 15:41:06 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE TEXT7
+OBJECT MODULE PLACED IN Text7.OBJ
+COMPILER INVOKED BY: F:\Cai phan mem\Keil C 8051\C51\BIN\C51.EXE Text7.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND TAB
+                    -S(2)
+
+line level    source
+
+   1          #include "send.h"
+   2          
+   3          void main(void)
+   4          {
+   5   1        bit searchcard_f=0,key_f=0,check_f=0,read_f=0,write_f=0;
+   6   1        bee=0;
+   7   1        TMOD = 0x20;
+   8   1        SCON = 0xd0;
+   9   1        TH1 = 250;
+  10   1        TL1 = 250;
+  11   1        TR1 = 1;
+  12   1        PCON = 0x80;            // SMOD=1
+  13   1        EA = 0;
+  14   1        DE=0;                          //禁止发送，禁止接收
+  15   1        RE=1; 
+  16   1        LCD_Init ();    
+  17   1        while(!searchcard_f)        //寻卡
+  18   1        {
+  19   2          write_f=0;
+  20   2          searchcard_f=search();
+  21   2          Delay_ms(5);
+  22   2        }
+  23   1        while(!key_f)            //发送密码
+  24   1        {                
+  25   2          searchcard_f=0;
+  26   2          key_f=password();
+  27   2          Delay_ms(5);
+  28   2        }
+  29   1        while(!check_f)           //密码验证
+  30   1        {
+  31   2            key_f=0;
+  32   2          check_f=check_password();
+  33   2          Delay_ms(5);
+  34   2        }
+  35   1        while(!read_f)            //读数据
+  36   1        {
+  37   2          check_f=0;
+  38   2          read_f=read();
+  39   2          Delay_ms(5);
+  40   2        }
+  41   1        DE=1;                          //允许发送，允许接收
+  42   1        RE=0;
+  43   1        Delay_ms(50);
+  44   1        while(!Transmit_f)              //主从机通信
+  45   1        {
+  46   2          Transmit(); 
+  47   2        }
+  48   1        dataprocess();
+  49   1        DE=0;                          //禁止发送，禁止接收
+  50   1        RE=1;
+  51   1        Delay_ms(2);
+  52   1        while(!write_f)               //写数据
+  53   1        {
+  54   2            read_f=0;   
+C51 COMPILER V9.59.0.0   TEXT7                                                             11/02/2018 15:41:06 PAGE 2   
+
+  55   2          write_f=write();
+  56   2          bee=write_f;
+  57   2          Delay_ms(255);
+  58   2          Delay_ms(255);
+  59   2          bee=0;
+  60   2        }
+  61   1        Display();
+  62   1        Delay_ms(255);
+  63   1      while(1);
+  64   1      }
+  65          /********************寻卡过程*********************/ 
+  66          bit search()
+  67          {
+  68   1        uchar i;
+  69   1        TB8=1;
+  70   1        Send(SEARCHCARD[0]);
+  71   1        TB8=0;
+  72   1        Send(SEARCHCARD[1]);
+  73   1        Send(SEARCHCARD[2]);
+  74   1        Send(SEARCHCARD[3]);
+  75   1        TB8=1;
+  76   1        Send(SEARCHCARD[4]);
+  77   1        for(i=0;i<9;i++)
+  78   1        {
+  79   2          return_frame[i]=Receive();
+  80   2          if(return_frame[0]!=0x47)
+  81   2          return 0;
+  82   2        }
+  83   1        for(i=0;i<9;i++)
+  84   1        {
+  85   2            Send(return_frame[i]);
+  86   2        }
+  87   1        if(return_frame[2]!=0x00)
+  88   1          return 0;
+  89   1        else
+  90   1        {
+  91   2          
+  92   2          return 1;
+  93   2        }
+  94   1        
+  95   1      }
+  96          /***********************发送密码******************/ 
+  97          bit password()
+  98          {
+  99   1        uint i;
+ 100   1        TB8=1;
+ 101   1        Send(KEY[0]);
+ 102   1        TB8=0;
+ 103   1        Send(KEY[1]);
+ 104   1        Send(KEY[2]);
+ 105   1        Send(KEY[3]); 
+ 106   1        Send(KEY[4]);
+ 107   1        TB8=1;
+ 108   1        Send(KEY[5]);
+ 109   1        Send(KEY[6]);
+ 110   1        Send(KEY[7]); 
+ 111   1        Send(KEY[8]);
+ 112   1        Send(KEY[9]);
+ 113   1        Send(KEY[10]);
+ 114   1        Send(KEY[11]);  
+ 115   1        for(i=0;i<5;i++)
+ 116   1        {
+C51 COMPILER V9.59.0.0   TEXT7                                                             11/02/2018 15:41:06 PAGE 3   
+
+ 117   2          return_frame[i]=Receive();
+ 118   2          if(return_frame[0]!=0x47)
+ 119   2          return 0;
+ 120   2        }
+ 121   1        if(return_frame[2]!=0x00)
+ 122   1          return 0;
+ 123   1        for(i=0;i<5;i++)
+ 124   1        {
+ 125   2          Send(return_frame[i]);
+ 126   2        }
+ 127   1        return 1;
+ 128   1      }
+ 129          
+ 130          /********************密码验证*********************/ 
+ 131          bit check_password()
+ 132          {
+ 133   1        uchar i;
+ 134   1        TB8=1;
+ 135   1        Send(CHECK[0]);
+ 136   1        TB8=0;
+ 137   1        Send(CHECK[1]);
+ 138   1        Send(CHECK[2]);
+ 139   1        Send(CHECK[3]);
+ 140   1        Send(CHECK[4]);
+ 141   1        TB8=1;
+ 142   1        Send(CHECK[5]);
+ 143   1      
+ 144   1        for(i=0;i<5;i++)
+ 145   1        {
+ 146   2          return_frame[i]=Receive();
+ 147   2          if(return_frame[0]!=0x47)
+ 148   2          return 0;
+ 149   2        }
+ 150   1        if(return_frame[2]!=0x00)
+ 151   1          return 0;
+ 152   1        for(i=0;i<5;i++)
+ 153   1        {
+ 154   2          Send(return_frame[i]);
+ 155   2        }
+ 156   1        return 1; 
+ 157   1      }
+ 158          
+ 159          /********************读卡*********************/ 
+ 160          bit read()
+ 161          {
+ 162   1          uchar i;
+ 163   1        TB8=1;
+ 164   1        Send(READDATA[0]);
+ 165   1        TB8=0;
+ 166   1        Send(READDATA[1]);
+ 167   1        Send(READDATA[2]);
+ 168   1        Send(READDATA[3]);
+ 169   1        TB8=1;
+ 170   1        Send(READDATA[4]);
+ 171   1      
+ 172   1        for(i=0;i<21;i++)
+ 173   1        {
+ 174   2          return_frame[i]=Receive();
+ 175   2          if(return_frame[0]!=0x47)
+ 176   2          return 0;
+ 177   2        }
+ 178   1        if(return_frame[2]!=0x00)
+C51 COMPILER V9.59.0.0   TEXT7                                                             11/02/2018 15:41:06 PAGE 4   
+
+ 179   1          return 0;
+ 180   1        for(i=0;i<21;i++)
+ 181   1        {
+ 182   2          Send(return_frame[i]);
+ 183   2        }
+ 184   1        DATA[0]=return_frame[4];
+ 185   1        DATA[1]=return_frame[5];
+ 186   1        DATA[2]=return_frame[6];
+ 187   1        return 1;
+ 188   1      }
+ 189          
+ 190          /********************写卡*********************/ 
+ 191          bit write()
+ 192          {
+ 193   1        uchar i;
+ 194   1        TB8=1;
+ 195   1        Send(WRITEDATA[0]);
+ 196   1        TB8=0;
+ 197   1        Send(WRITEDATA[1]);
+ 198   1        Send(WRITEDATA[2]);
+ 199   1        Send(WRITEDATA[3]);
+ 200   1        TB8=1;
+ 201   1        Send(WRITEDATA[4]);
+ 202   1        TB8=0;
+ 203   1        Send(WRITEDATA[5]);
+ 204   1        Send(WRITEDATA[6]);
+ 205   1        for(i=7;i<20;i++)
+ 206   1        {
+ 207   2          Send(WRITEDATA[i]);
+ 208   2        }
+ 209   1        TB8=0;
+ 210   1        Send(WRITEDATA[20]);    
+ 211   1        for(i=0;i<5;i++)
+ 212   1        {
+ 213   2          return_frame[i]=Receive();
+ 214   2          if(return_frame[0]!=0x47)
+ 215   2          return 0;
+ 216   2        }
+ 217   1        for(i=0;i<5;i++)
+ 218   1        {
+ 219   2          Send(return_frame[i]);
+ 220   2        }
+ 221   1        if(return_frame[2]!=0x00)
+ 222   1          return 0;
+ 223   1        else
+ 224   1        {
+ 225   2          
+ 226   2          return 1;
+ 227   2        }
+ 228   1      }
+ 229          
+ 230          /***************发送单字节数据********************/ 
+ 231          void Send(uchar m)
+ 232          {
+ 233   1        TI = 0;
+ 234   1        DE = 0;
+ 235   1        RE = 0;
+ 236   1        SBUF = m;
+ 237   1          while(!TI);
+ 238   1        TI = 0;
+ 239   1      }
+ 240          
+C51 COMPILER V9.59.0.0   TEXT7                                                             11/02/2018 15:41:06 PAGE 5   
+
+ 241          /***************接收单字节数据*******************/
+ 242          uchar Receive()
+ 243          {
+ 244   1        uchar tmp,j=0,i;
+ 245   1        DE = 1;
+ 246   1        RE = 1;
+ 247   1        RI = 0;
+ 248   1        while ((!RI)&&j<200)
+ 249   1        {
+ 250   2          for(i=0;i<50;i++);
+ 251   2          j++;
+ 252   2        }
+ 253   1        if(RI)
+ 254   1        {
+ 255   2          tmp = SBUF;
+ 256   2          RI=0;
+ 257   2          return tmp; 
+ 258   2        }
+ 259   1        else
+ 260   1        return 0xff;    
+ 261   1      } 
+ 262            
+ 263          /**********延时1ms程序*************/
+ 264          void Delay_ms(uint count)
+ 265          {
+ 266   1        uchar i,j;
+ 267   1        for(;count>0;count--)
+ 268   1          { 
+ 269   2          for(j=2;j>0;j--)
+ 270   2          for(i=0;i<248;i++)
+ 271   2            ;
+ 272   2          }
+ 273   1      } 
+ 274          
+ 275          /**********修改卡数据*************/
+ 276          void dataprocess()
+ 277          {
+ 278   1        uchar k;
+ 279   1        if(DATA[2]==0x0A)
+ 280   1        {
+ 281   2          DATA[2]=0x05;   //修改为还车状态
+ 282   2        }   
+ 283   1        else if(DATA[2]==0x05)              //如果是还车状态的话，先扣费，再转为取车状态
+ 284   1        {   
+ 285   2          if(DATA[0]!=0x00)
+ 286   2          {
+ 287   3            DATA[0]=DATA[0]-1;
+ 288   3            DATA[2]=0x0A;
+ 289   3          }
+ 290   2          else
+ 291   2            bee=1;                                 //如果余额为0，蜂鸣器长鸣
+ 292   2          
+ 293   2        }   
+ 294   1        for(k=0;k<3;k++)
+ 295   1        {
+ 296   2          WRITEDATA[4+k]=DATA[k];
+ 297   2        }
+ 298   1        if(DATA[2]==0x0A)
+ 299   1        {
+ 300   2          WRITEDATA[20]=0x97^DATA[0]+0x80;
+ 301   2        }
+ 302   1        else if(DATA[2]==0x05)
+C51 COMPILER V9.59.0.0   TEXT7                                                             11/02/2018 15:41:06 PAGE 6   
+
+ 303   1        {
+ 304   2          WRITEDATA[20]=0x98^DATA[0]+0x80;
+ 305   2        }
+ 306   1      }
+ 307          
+ 308          /**********液晶显示余额及卡状态*************/
+ 309          void Display()
+ 310          {
+ 311   1        Account[10]=DATA[0]/100%10+0x30;
+ 312   1        Account[11]=DATA[0]/10%10+0x30;
+ 313   1        Account[12]=DATA[0]%10+0x30;
+ 314   1          Borrow_bicycle[4]=addr/100%10+0x30;
+ 315   1        Borrow_bicycle[5]=addr/10%10+0x30;
+ 316   1        Borrow_bicycle[6]=addr%10+0x30;
+ 317   1        Return_bicycle[4]=addr/100%10+0x30;
+ 318   1        Return_bicycle[5]=addr/10%10+0x30;
+ 319   1        Return_bicycle[6]=addr%10+0x30;
+ 320   1        if(DATA[2]==0x05)
+ 321   1        { 
+ 322   2          LCD_Wcmd ( 0x01 );
+ 323   2          OutWord(0x88, 8, Account); 
+ 324   2          OutWord(0x90, 8, Borrow_bicycle);
+ 325   2        }
+ 326   1        else if(DATA[2]==0x0a)
+ 327   1        {
+ 328   2          LCD_Wcmd ( 0x01 );
+ 329   2          OutWord(0x88, 8, Account); 
+ 330   2          OutWord(0x90, 8, Return_bicycle);
+ 331   2        }
+ 332   1        Delay_ms(200);
+ 333   1        Delay_ms(200);
+ 334   1      }
+ 335          void LCD_Busy ()             /*判断lcd是否处于忙状态，是返回1，否返回0*/
+ 336          {                          
+ 337   1         
+ 338   1        lcd_port = 0xff;
+ 339   1        RS = 0;
+ 340   1          RW = 1;
+ 341   1        EN = 1;
+ 342   1        while (rd);
+ 343   1        EN = 0;
+ 344   1      } 
+ 345          
+ 346          void LCD_Wcmd ( uchar cmd )       /*对lcd指令寄存器写显示控制命令字*/
+ 347          {                          
+ 348   1        LCD_Busy();
+ 349   1        RS = 0;
+ 350   1        RW = 0;
+ 351   1          lcd_port = cmd;         /*写指令到端口上*/ 
+ 352   1        EN = 1;
+ 353   1        _nop_ ();       
+ 354   1          EN = 0;  
+ 355   1      }
+ 356          
+ 357          void LCD_Wdat ( uchar dat )       /*对lcd数据寄存器写显示数据*/ 
+ 358          {                          
+ 359   1        LCD_Busy();
+ 360   1          RS = 1;
+ 361   1          RW = 0;
+ 362   1          lcd_port = dat;         /*写数据到端口上*/  
+ 363   1          EN = 1;
+ 364   1        _nop_ ();
+C51 COMPILER V9.59.0.0   TEXT7                                                             11/02/2018 15:41:06 PAGE 7   
+
+ 365   1          EN = 0; 
+ 366   1      }
+ 367          
+ 368          void LCD_Init ()            /*lcd初始化*/
+ 369          {     
+ 370   1        LCD_Wcmd ( 0x30 );          /*功能设置*/     
+ 371   1        LCD_Wcmd ( 0x01 );        /*清屏*/ 
+ 372   1          LCD_Wcmd ( 0x0c );          /*显示开，光标关，光标闪烁关*/   
+ 373   1        OutWord(0x80, 8, Wellcome);
+ 374   1        OutWord(0x88, 8, Unit);
+ 375   1        OutWord(0x90, 8, Design);
+ 376   1        OutWord(0x98, 8, Time);
+ 377   1        Delay_ms(200);
+ 378   1        Delay_ms(200);
+ 379   1      }
+ 380          
+ 381          void OutWord( uchar place, uchar unit, uchar charcode[] )       /*输出中文或字符*/
+ 382          {
+ 383   1        uchar i;
+ 384   1        LCD_Wcmd ( place );
+ 385   1        for ( i=0; i < unit*2; i++)
+ 386   1          LCD_Wdat ( charcode[i] );
+ 387   1      }
+ 388          
+ 389          void Transmit()
+ 390          {
+ 391   1        uchar tmp,i;
+ 392   1        P1= 0xFF;
+ 393   1        addr=P1;
+ 394   1        tmp = addr-1;
+ 395   1        i=0;
+ 396   1        while(tmp!=addr)      
+ 397   1        {
+ 398   2          uint j=0;
+ 399   2          i++;
+ 400   2          DE = 1;
+ 401   2          RE = 1;
+ 402   2          /* 发送从机地址 */
+ 403   2          TI = 0;
+ 404   2          TB8 = 1;        // 发送地址帧 
+ 405   2          SBUF = addr;
+ 406   2          while(!TI);
+ 407   2          TI = 0;
+ 408   2          DE = 0;
+ 409   2          RE = 0;
+ 410   2          RI=0;
+ 411   2          /* 接收从机应答 */
+ 412   2          while ((!RI)&&j<1000)
+ 413   2          {
+ 414   3            j++;
+ 415   3          }
+ 416   2          if(RI)
+ 417   2          {
+ 418   3            tmp = SBUF;
+ 419   3            RI=0;
+ 420   3          }
+ 421   2          else if(i==10)
+ 422   2          {
+ 423   3            tmp=addr;
+ 424   3            i=0;  
+ 425   3          }
+ 426   2        }
+C51 COMPILER V9.59.0.0   TEXT7                                                             11/02/2018 15:41:06 PAGE 8   
+
+ 427   1      
+ 428   1        /* 发送数据并接收校验信息，如果接收到SUCC，表示从机接收成功，否则将重新发送该组数据 */  
+ 429   1        tmp = ERR;
+ 430   1        i=0;
+ 431   1          while(tmp!=SUCC)
+ 432   1          {
+ 433   2          uint j=0;
+ 434   2          i++;
+ 435   2          DE = 1;
+ 436   2          RE = 1;
+ 437   2          TI = 0;
+ 438   2          TB8 = 0;        
+ 439   2          SBUF =DATA[2];
+ 440   2          while(!TI);
+ 441   2          TI = 0;     // 发送数据 
+ 442   2          DE = 0;
+ 443   2          RE = 0;
+ 444   2          RI = 0;
+ 445   2          while ((!RI)&&j<1000)
+ 446   2          {
+ 447   3            j++;
+ 448   3          }
+ 449   2          if(RI)
+ 450   2          {
+ 451   3            tmp = SBUF;
+ 452   3            if(tmp==SUCC)
+ 453   3            { 
+ 454   4              Transmit_f=1; 
+ 455   4            }
+ 456   3            else if(tmp==ERR)
+ 457   3            {
+ 458   4              tmp=SUCC;
+ 459   4              LCD_Wcmd(0x01);
+ 460   4              OutWord(0x88, 8, Transmit_error);
+ 461   4            //  Delay_ms(1000);
+ 462   4            }
+ 463   3            RI = 0;
+ 464   3          }
+ 465   2          else if(i==10)
+ 466   2          {
+ 467   3            tmp=SUCC;
+ 468   3            i=0;
+ 469   3            LCD_Wcmd(0x01);
+ 470   3            OutWord(0x88, 8, Transmit_error);
+ 471   3        //    Delay_ms(1000);
+ 472   3          } 
+ 473   2          
+ 474   2        } 
+ 475   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1731    ----
+   CONSTANT SIZE    =    111    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      1      14
+   IDATA SIZE       =     96    ----
+   BIT SIZE         =      1       5
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
